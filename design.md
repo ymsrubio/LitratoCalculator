@@ -92,6 +92,25 @@ requirement, not a compliance checkbox.
 
 ## Typography
 
+### Family
+
+```
+--font-sans: 'Outfit', 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+```
+
+**Outfit is currently declared but never loaded.** No `@import` and no `<link>`
+exists for it, so the app has been silently rendering in `system-ui` while
+appearing to specify a typeface. Either load Outfit properly or delete it from the
+stack and design honestly against the system font — but the present state, where
+the intended font and the rendered font differ, must not survive the redesign.
+
+Outfit is a good fit for this app: geometric, round, and legible at large sizes,
+which suits the oversized profit figure. It supports tabular figures, which the
+rule below depends on. If it is kept, it must actually be loaded and its weights
+subset to the four this scale uses.
+
+### Scale
+
 A single family, weight and size doing the work of distinction. The scale is
 deliberately short — more sizes means more decisions and more inconsistency.
 
@@ -107,8 +126,10 @@ deliberately short — more sizes means more decisions and more inconsistency.
 Never go below `--text-xs`. If something does not fit, the layout is wrong, not
 the type size — that mistake is what produced the current cramped screen.
 
-Numbers displaying currency use tabular figures where the font offers them, so
-digits stay aligned as values change.
+Numbers displaying currency use tabular figures (`font-variant-numeric: tabular-nums`)
+so digits stay aligned as values change. This requires the loaded font to support
+the feature, which is a second reason the font question above has to be settled
+rather than left implicit.
 
 ## Spacing
 
@@ -189,5 +210,6 @@ than a template's.
 Two decisions are deferred to implementation, to be settled against a rendered
 screen rather than on paper:
 
+- Whether Outfit is loaded properly or dropped in favour of the system font.
 - The exact treatment of a factor row now that it has room to breathe.
 - Where the Save action lives on the Calculator once accounts exist.
