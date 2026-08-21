@@ -27,4 +27,15 @@ dist-ssr
 AGENTS.md
 .agents
 .gemini
+CLAUDE.md
+.claude
+.cursor
+.cursorrules
+.windsurf
+.aider*
+docs/agents
+
+# Note: CONTEXT.md and docs/adr/ are deliberately NOT ignored. They are
+# project documentation (glossary and architecture decisions), not agent
+# tooling config, and are worth keeping in history for human readers.
 

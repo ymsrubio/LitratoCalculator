@@ -8,23 +8,11 @@ import {
   Share2
 } from 'lucide-react';
 
-export interface CustomMiscFee {
-  id: string;
-  name: string;
-  type: 'flat' | 'unit';
-  amount: number;
-  unitCount: number;
-  unitPrice: number;
-}
+import { calculate, type LineItem } from './lib/calculate';
 
-export interface CustomRevenueItem {
-  id: string;
-  name: string;
-  type: 'flat' | 'unit';
-  amount: number;
-  unitCount: number;
-  unitPrice: number;
-}
+// Misc Fee and Revenue rows are the same shape; the names distinguish intent.
+export type CustomMiscFee = LineItem;
+export type CustomRevenueItem = LineItem;
 
 function App() {
   const appCardRef = useRef<HTMLDivElement>(null);
@@ -164,53 +152,33 @@ function App() {
     }));
   };
 
-  // Compute Total Misc Expenses (Custom Items)
-  const totalMiscCost = customMiscFees.reduce((sum, item) => {
-    return sum + (item.type === 'flat' ? item.amount : item.unitCount * item.unitPrice);
-  }, 0);
+  // All profit arithmetic lives in src/lib/calculate.ts so it can be tested
+  // without rendering. This computes the active Mode only.
+  const result = calculate({
+    mode: activeTab,
+    rentalPrice,
+    sellingPricePerPrint,
+    printsSoldQty,
+    spaceRentalCost,
+    commissionRate,
+    printCost,
+    printQty,
+    employeeCost,
+    employeeCount,
+    transportCost,
+    miscFees: customMiscFees,
+    revenueItems: customRevenueItems
+  });
 
-  // Compute Total Custom Product Revenue
-  const totalCustomRevenue = customRevenueItems.reduce((sum, item) => {
-    return sum + (item.type === 'flat' ? item.amount : item.unitCount * item.unitPrice);
-  }, 0);
-
-  // Math logic: Mode 1 (Package Rental)
-  const tab1PrintsCost = printCost * printQty;
-  const tab1EmployeesCost = employeeCost * employeeCount;
-  const tab1TotalExpenses = tab1PrintsCost + tab1EmployeesCost + transportCost + totalMiscCost;
-  const tab1NetProfit = rentalPrice - tab1TotalExpenses;
-  const tab1ProfitMargin = rentalPrice > 0 ? (tab1NetProfit / rentalPrice) * 100 : 0;
-
-  // Math logic: Mode 2 (Retail Booth / Copies Mode)
-  const tab2PhotoSales = sellingPricePerPrint * printsSoldQty;
-  const tab2Revenue = tab2PhotoSales + totalCustomRevenue;
-  const tab2PrintProdCost = printCost * printsSoldQty;
-  const tab2StaffCost = employeeCost * employeeCount;
-  const tab2TotalExpenses = spaceRentalCost + tab2PrintProdCost + tab2StaffCost + transportCost + totalMiscCost;
-  const tab2NetProfit = tab2Revenue - tab2TotalExpenses;
-  const tab2ProfitMargin = tab2Revenue > 0 ? (tab2NetProfit / tab2Revenue) * 100 : 0;
-
-  // Math logic: Mode 3 (Percentage Cut Mode)
-  const tab3GrossPhotoSales = sellingPricePerPrint * printsSoldQty;
-  const tab3GrossRevenue = tab3GrossPhotoSales + totalCustomRevenue;
-  const tab3OrganizerCut = tab3GrossRevenue * (commissionRate / 100);
-  const tab3PrintProdCost = printCost * printsSoldQty;
-  const tab3StaffCost = employeeCost * employeeCount;
-  const tab3TotalExpenses = tab3OrganizerCut + tab3PrintProdCost + tab3StaffCost + transportCost + totalMiscCost;
-  const tab3NetProfit = tab3GrossRevenue - tab3TotalExpenses;
-  const tab3ProfitMargin = tab3GrossRevenue > 0 ? (tab3NetProfit / tab3GrossRevenue) * 100 : 0;
-
-  // Break-even copies needed to cover remaining fixed overhead after custom revenue
-  const netOverheadToCover = Math.max(0, (spaceRentalCost + tab2StaffCost + transportCost + totalMiscCost) - totalCustomRevenue);
-  const breakEvenCopies = (sellingPricePerPrint - printCost) > 0
-    ? Math.ceil(netOverheadToCover / (sellingPricePerPrint - printCost))
-    : 0;
+  const { photoSales, printsCost, staffCost, organizerCut, totalMiscCost, totalCustomRevenue } =
+    result.breakdown;
+  const breakEvenCopies = result.breakEvenCopies ?? 0;
 
   // Active dashboard metrics
-  const currentRevenue = activeTab === 'package' ? rentalPrice : activeTab === 'retail' ? tab2Revenue : tab3GrossRevenue;
-  const currentExpenses = activeTab === 'package' ? tab1TotalExpenses : activeTab === 'retail' ? tab2TotalExpenses : tab3TotalExpenses;
-  const currentNetProfit = activeTab === 'package' ? tab1NetProfit : activeTab === 'retail' ? tab2NetProfit : tab3NetProfit;
-  const currentProfitMargin = activeTab === 'package' ? tab1ProfitMargin : activeTab === 'retail' ? tab2ProfitMargin : tab3ProfitMargin;
+  const currentRevenue = result.grossRevenue;
+  const currentExpenses = result.totalExpenses;
+  const currentNetProfit = result.netProfit;
+  const currentProfitMargin = result.profitMargin;
 
   // Format currency helper
   const formatVal = (val: number) => {
@@ -268,45 +236,45 @@ function App() {
 💵 Package Price (Revenue): ${formatVal(rentalPrice)}
 
 💸 EXPENSES BREAKDOWN:
-• Photo Prints (${printQty} pcs @ ${formatVal(printCost)}): ${formatVal(tab1PrintsCost)}
-• Staff / Assistants (${employeeCount} people @ ${formatVal(employeeCost)}): ${formatVal(tab1EmployeesCost)}
+• Photo Prints (${printQty} pcs @ ${formatVal(printCost)}): ${formatVal(printsCost)}
+• Staff / Assistants (${employeeCount} people @ ${formatVal(employeeCost)}): ${formatVal(staffCost)}
 • Gas & Travel: ${formatVal(transportCost)}
 ${miscText}
 
-📊 TOTAL EXPENSES: ${formatVal(tab1TotalExpenses)}
-💰 YOUR TAKE-HOME PROFIT: ${formatVal(tab1NetProfit)}
-📈 PROFIT MARGIN: ${tab1ProfitMargin.toFixed(1)}%
+📊 TOTAL EXPENSES: ${formatVal(currentExpenses)}
+💰 YOUR TAKE-HOME PROFIT: ${formatVal(currentNetProfit)}
+📈 PROFIT MARGIN: ${currentProfitMargin.toFixed(1)}%
 --------------------------------------`;
     } else if (activeTab === 'retail') {
       reportText = `🏪 --- LITRATO RETAIL BOOTH REPORT ---
-${getRevenueBreakdownText(tab2PhotoSales)}
+${getRevenueBreakdownText(photoSales)}
 
 💸 EXPENSES BREAKDOWN:
 • Space / Booth Rental: ${formatVal(spaceRentalCost)}
-• Print Production (${printsSoldQty} copies @ ${formatVal(printCost)}): ${formatVal(tab2PrintProdCost)}
-• Staff / Assistants (${employeeCount} people @ ${formatVal(employeeCost)}): ${formatVal(tab2StaffCost)}
+• Print Production (${printsSoldQty} copies @ ${formatVal(printCost)}): ${formatVal(printsCost)}
+• Staff / Assistants (${employeeCount} people @ ${formatVal(employeeCost)}): ${formatVal(staffCost)}
 • Gas & Travel: ${formatVal(transportCost)}
 ${miscText}
 
-📊 TOTAL EXPENSES: ${formatVal(tab2TotalExpenses)}
+📊 TOTAL EXPENSES: ${formatVal(currentExpenses)}
 🎯 BREAK-EVEN POINT: ${breakEvenCopies} copies sold
-💰 YOUR TAKE-HOME PROFIT: ${formatVal(tab2NetProfit)}
-📈 PROFIT MARGIN: ${tab2ProfitMargin.toFixed(1)}%
+💰 YOUR TAKE-HOME PROFIT: ${formatVal(currentNetProfit)}
+📈 PROFIT MARGIN: ${currentProfitMargin.toFixed(1)}%
 --------------------------------------`;
     } else {
       reportText = `✂️ --- LITRATO PERCENTAGE CUT REPORT ---
-${getRevenueBreakdownText(tab3GrossPhotoSales)}
+${getRevenueBreakdownText(photoSales)}
 
 💸 EXPENSES BREAKDOWN:
-• Organizer Cut (${commissionRate}%): ${formatVal(tab3OrganizerCut)}
-• Print Production (${printsSoldQty} copies @ ${formatVal(printCost)}): ${formatVal(tab3PrintProdCost)}
-• Staff / Assistants (${employeeCount} people @ ${formatVal(employeeCost)}): ${formatVal(tab3StaffCost)}
+• Organizer Cut (${commissionRate}%): ${formatVal(organizerCut)}
+• Print Production (${printsSoldQty} copies @ ${formatVal(printCost)}): ${formatVal(printsCost)}
+• Staff / Assistants (${employeeCount} people @ ${formatVal(employeeCost)}): ${formatVal(staffCost)}
 • Gas & Travel: ${formatVal(transportCost)}
 ${miscText}
 
-📊 TOTAL EXPENSES: ${formatVal(tab3TotalExpenses)}
-💰 YOUR TAKE-HOME PROFIT: ${formatVal(tab3NetProfit)}
-📈 PROFIT MARGIN: ${tab3ProfitMargin.toFixed(1)}%
+📊 TOTAL EXPENSES: ${formatVal(currentExpenses)}
+💰 YOUR TAKE-HOME PROFIT: ${formatVal(currentNetProfit)}
+📈 PROFIT MARGIN: ${currentProfitMargin.toFixed(1)}%
 --------------------------------------`;
     }
 
@@ -1027,7 +995,7 @@ ${miscText}
             <div className="factor-row-dual expense-row">
               <div className="dual-header">
                 <span className="dual-title">2. Photo Prints</span>
-                <span className="dual-badge">Total: {formatVal(tab1PrintsCost)}</span>
+                <span className="dual-badge">Total: {formatVal(printsCost)}</span>
               </div>
               <div className="dual-controls-grid">
                 <div className="dual-control-item">
@@ -1070,7 +1038,7 @@ ${miscText}
             <div className="factor-row-dual expense-row">
               <div className="dual-header">
                 <span className="dual-title">3. Staff Helpers</span>
-                <span className="dual-badge">Total: {formatVal(tab1EmployeesCost)}</span>
+                <span className="dual-badge">Total: {formatVal(staffCost)}</span>
               </div>
               <div className="dual-controls-grid">
                 <div className="dual-control-item">
@@ -1163,7 +1131,7 @@ ${miscText}
             <div className="factor-row-dual expense-row">
               <div className="dual-header">
                 <span className="dual-title">3. Production & Staff</span>
-                <span className="dual-badge">Total: {formatVal(tab2StaffCost + tab2PrintProdCost)}</span>
+                <span className="dual-badge">Total: {formatVal(staffCost + printsCost)}</span>
               </div>
               <div className="dual-controls-grid">
                 <div className="dual-control-item">
@@ -1202,7 +1170,7 @@ ${miscText}
               </div>
               <div className="dual-controls-grid" style={{ marginTop: '4px', paddingTop: '4px', borderTop: '1px solid var(--border-color)' }}>
                 <div className="dual-control-item" style={{ gridColumn: 'span 2' }}>
-                  <span className="dual-control-label">Print Production Cost ({formatVal(printCost)}/copy × {printsSoldQty} pcs) = <strong>{formatVal(tab2PrintProdCost)}</strong></span>
+                  <span className="dual-control-label">Print Production Cost ({formatVal(printCost)}/copy × {printsSoldQty} pcs) = <strong>{formatVal(printsCost)}</strong></span>
                   <div className="dual-stepper-box" style={{ width: '100%', maxWidth: '240px' }}>
                     <button type="button" className="stepper-btn-mini stepper-minus" onClick={() => setPrintCost(Math.max(0, printCost - 1))} title="Lower production cost">-</button>
                     <div className="dual-input-span">
@@ -1263,7 +1231,7 @@ ${miscText}
                     onChange={(e) => setCommissionRate(Math.max(0, parseFloat(e.target.value) || 0))}
                     placeholder="0"
                   />
-                  <span className="currency-symbol" style={{ marginLeft: '4px' }}>% ({formatVal(tab3OrganizerCut)})</span>
+                  <span className="currency-symbol" style={{ marginLeft: '4px' }}>% ({formatVal(organizerCut)})</span>
                 </div>
               </div>
               <div className="row-steppers">
@@ -1276,7 +1244,7 @@ ${miscText}
             <div className="factor-row-dual expense-row">
               <div className="dual-header">
                 <span className="dual-title">3. Production & Staff</span>
-                <span className="dual-badge">Total: {formatVal(tab3StaffCost + tab3PrintProdCost)}</span>
+                <span className="dual-badge">Total: {formatVal(staffCost + printsCost)}</span>
               </div>
               <div className="dual-controls-grid">
                 <div className="dual-control-item">
@@ -1315,7 +1283,7 @@ ${miscText}
               </div>
               <div className="dual-controls-grid" style={{ marginTop: '4px', paddingTop: '4px', borderTop: '1px solid var(--border-color)' }}>
                 <div className="dual-control-item" style={{ gridColumn: 'span 2' }}>
-                  <span className="dual-control-label">Print Production Cost ({formatVal(printCost)}/copy × {printsSoldQty} pcs) = <strong>{formatVal(tab3PrintProdCost)}</strong></span>
+                  <span className="dual-control-label">Print Production Cost ({formatVal(printCost)}/copy × {printsSoldQty} pcs) = <strong>{formatVal(printsCost)}</strong></span>
                   <div className="dual-stepper-box" style={{ width: '100%', maxWidth: '240px' }}>
                     <button type="button" className="stepper-btn-mini stepper-minus" onClick={() => setPrintCost(Math.max(0, printCost - 1))} title="Lower production cost">-</button>
                     <div className="dual-input-span">
