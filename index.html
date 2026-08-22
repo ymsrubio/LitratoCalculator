@@ -3,8 +3,19 @@
 
 <head>
   <meta charset="UTF-8" />
+  <link rel="icon" href="/favicon.ico" sizes="any" />
   <link rel="icon" type="image/svg+xml" href="/litrato.svg" />
+  <link rel="apple-touch-icon" href="/apple-touch-icon-180x180.png" />
+  <!-- viewport-fit=cover (from the nav shell) is what makes the bottom bar's
+       env(safe-area-inset-bottom) padding resolve to a real value. -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#F36519" />
+  <!-- Installable "add to home screen" behaviour on iOS Safari, which does
+       not reliably read display:standalone from the web manifest alone. -->
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="Litrato" />
+  <meta name="mobile-web-app-capable" content="yes" />
   <title>litratocalculator</title>
 
   <!-- design.md declares --font-sans as Outfit first; it must actually load,
