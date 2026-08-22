@@ -1,1 +1,3 @@
-/* Clean empty file to rely completely on index.css for 100% viewport no-scroll layout */
+/* Empty by design — the app's styles live entirely in index.css. Scrolling is
+   allowed (design.md § Principles), so this file no longer needs to carry a
+   viewport-clamping rule. */

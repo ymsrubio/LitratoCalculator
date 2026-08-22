@@ -300,10 +300,17 @@ ${miscText}
       const fullHeight = node.scrollHeight;
       const fullWidth = node.scrollWidth;
 
+      // html-to-image passes this straight to canvas fillStyle and to a clone
+      // serialized into a standalone SVG document, so a CSS var() string won't
+      // resolve in either place — it has to be the token's actual computed value.
+      const exportBackground = getComputedStyle(document.documentElement)
+        .getPropertyValue('--surface')
+        .trim();
+
       const blob = await toBlob(node, {
         cacheBust: true,
         pixelRatio: 2,
-        backgroundColor: '#f8fafc',
+        backgroundColor: exportBackground,
         width: fullWidth,
         height: fullHeight,
         style: {
@@ -396,12 +403,10 @@ ${miscText}
     }
   };
 
-  // Helper for determining profit level styling class
-  const getProfitClass = (val: number) => {
-    if (val < 0) return 'negative';
-    if (currentRevenue > 0 && (val / currentRevenue) < 0.3) return 'warning'; // low margin (<30%)
-    return 'positive';
-  };
+  // Money figures render in --profit when positive and --loss when negative
+  // (design.md: no third "warning" colour — that would be a third meaning for
+  // the same signal, which is exactly the double-duty colour use this system removes).
+  const getProfitClass = (val: number) => (val < 0 ? 'negative' : 'positive');
 
   // Render Revenue Section with dynamic custom add-on product rows
   const renderRevenueSection = () => {
@@ -409,7 +414,7 @@ ${miscText}
 
     return (
       <>
-        <div className="section-divider revenue-divider">
+        <div className="section-divider">
           <span>💵 REVENUE & INCOME</span>
         </div>
 
@@ -460,7 +465,7 @@ ${miscText}
         <div className="misc-fees-container revenue-row" style={{ marginTop: '0' }}>
           <div className="misc-header">
             <span className="factor-title">2. Add-on Products</span>
-            <span className="dual-badge" style={{ background: 'var(--accent-green-light)', color: 'var(--accent-green)' }}>
+            <span className="dual-badge" style={{ background: 'var(--profit-soft)', color: 'var(--profit)' }}>
               Add-ons: {formatVal(totalCustomRevenue)}
             </span>
           </div>
@@ -471,16 +476,16 @@ ${miscText}
               {customRevenueItems.map((item) => {
                 const itemSubtotal = item.type === 'flat' ? item.amount : item.unitCount * item.unitPrice;
                 return (
-                  <div key={item.id} className="custom-misc-card" style={{ borderColor: 'rgba(5, 150, 105, 0.25)' }}>
+                  <div key={item.id} className="custom-misc-card">
                     <div className="custom-misc-top">
                       <div className="custom-misc-info">
                         <span className="custom-misc-name">{item.name}</span>
-                        <span className="custom-misc-type-tag" style={{ background: 'var(--accent-green-light)', color: 'var(--accent-green)' }}>
+                        <span className="custom-misc-type-tag">
                           {item.type === 'flat' ? 'Flat Revenue' : `${item.unitCount} pcs × ${formatVal(item.unitPrice)}`}
                         </span>
                       </div>
                       <div className="custom-misc-right">
-                        <span className="custom-misc-amount" style={{ color: 'var(--accent-green)' }}>{formatVal(itemSubtotal)}</span>
+                        <span className="custom-misc-amount" style={{ color: 'var(--profit)' }}>{formatVal(itemSubtotal)}</span>
                         <button
                           type="button"
                           className="trash-btn"
@@ -499,11 +504,11 @@ ${miscText}
                         <div className="inline-edit-field">
                           <span className="inline-label">Amount:</span>
                           <div className="inline-input-box">
-                            <span className="currency-symbol" style={{ fontSize: '0.85em', color: 'var(--accent-green)' }}>{currency}</span>
+                            <span className="currency-symbol">{currency}</span>
                             <input
                               type="number"
                               className="dual-input"
-                              style={{ width: '70px', textAlign: 'right', color: 'var(--accent-green)' }}
+                              style={{ width: '70px', textAlign: 'right' }}
                               value={item.amount === 0 ? '' : item.amount}
                               onChange={(e) => handleUpdateCustomRevenueItem(item.id, 'amount', Math.max(0, parseFloat(e.target.value) || 0))}
                             />
@@ -513,25 +518,23 @@ ${miscText}
                         <div className="inline-edit-dual">
                           <div className="inline-edit-field">
                             <span className="inline-label">Units Sold:</span>
-                            <div className="dual-stepper-box" style={{ background: 'var(--bg-surface)' }}>
+                            <div className="dual-stepper-box">
                               <button
                                 type="button"
                                 className="stepper-btn-mini stepper-minus"
-                                style={{ height: '26px', width: '28px', minWidth: '28px', fontSize: '0.85rem' }}
                                 onClick={() => handleUpdateCustomRevenueItem(item.id, 'unitCount', Math.max(0, item.unitCount - 1))}
                                 title="Decrease units"
                               >-</button>
                               <input
                                 type="number"
                                 className="dual-input"
-                                style={{ width: '38px', textAlign: 'center', color: 'var(--accent-green)', fontSize: '0.85rem' }}
+                                style={{ width: '44px', textAlign: 'center' }}
                                 value={item.unitCount === 0 ? '' : item.unitCount}
                                 onChange={(e) => handleUpdateCustomRevenueItem(item.id, 'unitCount', Math.max(0, parseInt(e.target.value) || 0))}
                               />
                               <button
                                 type="button"
                                 className="stepper-btn-mini stepper-plus"
-                                style={{ height: '26px', width: '28px', minWidth: '28px', fontSize: '0.85rem', background: 'var(--accent-green)' }}
                                 onClick={() => handleUpdateCustomRevenueItem(item.id, 'unitCount', item.unitCount + 1)}
                                 title="Increase units"
                               >+</button>
@@ -540,11 +543,11 @@ ${miscText}
                           <div className="inline-edit-field">
                             <span className="inline-label">Price/Unit:</span>
                             <div className="inline-input-box">
-                              <span className="currency-symbol" style={{ fontSize: '0.85em', color: 'var(--accent-green)' }}>{currency}</span>
+                              <span className="currency-symbol">{currency}</span>
                               <input
                                 type="number"
                                 className="dual-input"
-                                style={{ width: '65px', textAlign: 'right', color: 'var(--accent-green)' }}
+                                style={{ width: '65px', textAlign: 'right' }}
                                 value={item.unitPrice === 0 ? '' : item.unitPrice}
                                 onChange={(e) => handleUpdateCustomRevenueItem(item.id, 'unitPrice', Math.max(0, parseFloat(e.target.value) || 0))}
                               />
@@ -563,14 +566,14 @@ ${miscText}
           {!isAddingRevenueItem ? (
             <button
               type="button"
-              className="add-misc-trigger-btn add-revenue-trigger-btn"
+              className="add-misc-trigger-btn"
               onClick={() => setIsAddingRevenueItem(true)}
             >
               <Plus size={16} />
               <span>Add Product / Revenue Item</span>
             </button>
           ) : (
-            <div className="add-misc-form-box" style={{ borderColor: 'var(--accent-green)' }}>
+            <div className="add-misc-form-box">
               <span className="form-box-title">🎁 Add New Product / Revenue Item</span>
 
               <div className="form-field-group">
@@ -608,11 +611,10 @@ ${miscText}
                 <div className="form-field-group">
                   <label className="form-field-label">Revenue Amount ({currency})</label>
                   <div className="factor-input-wrapper">
-                    <span className="currency-symbol" style={{ color: 'var(--accent-green)' }}>{currency}</span>
+                    <span className="currency-symbol">{currency}</span>
                     <input
                       type="number"
                       className="factor-input"
-                      style={{ color: 'var(--accent-green)' }}
                       value={newRevAmount === 0 ? '' : newRevAmount}
                       onChange={(e) => setNewRevAmount(Math.max(0, parseFloat(e.target.value) || 0))}
                       placeholder="0"
@@ -626,7 +628,7 @@ ${miscText}
                     <input
                       type="number"
                       className="dual-input"
-                      style={{ width: '100%', height: '36px', background: 'var(--bg-surface-elevated)', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '0 8px', fontSize: '0.95rem', color: 'var(--accent-green)' }}
+                      style={{ width: '100%', height: '44px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '8px', padding: '0 8px', fontSize: '1rem' }}
                       value={newRevUnitCount === 0 ? '' : newRevUnitCount}
                       onChange={(e) => setNewRevUnitCount(Math.max(0, parseInt(e.target.value) || 0))}
                       placeholder="0"
@@ -635,11 +637,10 @@ ${miscText}
                   <div className="form-field-group">
                     <label className="form-field-label">Price per Unit ({currency})</label>
                     <div className="factor-input-wrapper">
-                      <span className="currency-symbol" style={{ color: 'var(--accent-green)' }}>{currency}</span>
+                      <span className="currency-symbol">{currency}</span>
                       <input
                         type="number"
                         className="factor-input"
-                        style={{ color: 'var(--accent-green)' }}
                         value={newRevUnitPrice === 0 ? '' : newRevUnitPrice}
                         onChange={(e) => setNewRevUnitPrice(Math.max(0, parseFloat(e.target.value) || 0))}
                         placeholder="50"
@@ -731,25 +732,23 @@ ${miscText}
                       <div className="inline-edit-dual">
                         <div className="inline-edit-field">
                           <span className="inline-label">Units:</span>
-                          <div className="dual-stepper-box" style={{ background: 'var(--bg-surface)' }}>
+                          <div className="dual-stepper-box">
                             <button
                               type="button"
                               className="stepper-btn-mini stepper-minus"
-                              style={{ height: '26px', width: '28px', minWidth: '28px', fontSize: '0.85rem' }}
                               onClick={() => handleUpdateCustomMiscFee(item.id, 'unitCount', Math.max(0, item.unitCount - 1))}
                               title="Decrease units"
                             >-</button>
                             <input
                               type="number"
                               className="dual-input"
-                              style={{ width: '38px', textAlign: 'center', color: 'var(--color-danger)', fontSize: '0.85rem' }}
+                              style={{ width: '44px', textAlign: 'center' }}
                               value={item.unitCount === 0 ? '' : item.unitCount}
                               onChange={(e) => handleUpdateCustomMiscFee(item.id, 'unitCount', Math.max(0, parseInt(e.target.value) || 0))}
                             />
                             <button
                               type="button"
                               className="stepper-btn-mini stepper-plus"
-                              style={{ height: '26px', width: '28px', minWidth: '28px', fontSize: '0.85rem', background: 'var(--color-danger)' }}
                               onClick={() => handleUpdateCustomMiscFee(item.id, 'unitCount', item.unitCount + 1)}
                               title="Increase units"
                             >+</button>
@@ -843,7 +842,7 @@ ${miscText}
                   <input
                     type="number"
                     className="dual-input"
-                    style={{ width: '100%', height: '36px', background: 'var(--bg-surface-elevated)', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '0 8px', fontSize: '0.95rem' }}
+                    style={{ width: '100%', height: '44px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '8px', padding: '0 8px', fontSize: '1rem' }}
                     value={newFeeUnitCount === 0 ? '' : newFeeUnitCount}
                     onChange={(e) => setNewFeeUnitCount(Math.max(0, parseInt(e.target.value) || 0))}
                     placeholder="0"
@@ -945,11 +944,11 @@ ${miscText}
         <div className="dashboard-subbar">
           <div className="subbar-item">
             <span className="subbar-label">REVENUE</span>
-            <span className="subbar-val" style={{ color: 'var(--accent-green)' }}>{formatVal(currentRevenue)}</span>
+            <span className="subbar-val" style={{ color: 'var(--profit)' }}>{formatVal(currentRevenue)}</span>
           </div>
           <div className="subbar-item">
             <span className="subbar-label">EXPENSES</span>
-            <span className="subbar-val" style={{ color: 'var(--color-danger)' }}>{formatVal(currentExpenses)}</span>
+            <span className="subbar-val" style={{ color: 'var(--loss)' }}>{formatVal(currentExpenses)}</span>
           </div>
           <div className="subbar-item">
             <span className="subbar-label">MARGIN</span>
@@ -962,7 +961,7 @@ ${miscText}
       <main className="factors-container">
         {activeTab === 'package' ? (
           <>
-            <div className="section-divider revenue-divider">
+            <div className="section-divider">
               <span>💵 REVENUE & INCOME</span>
             </div>
 
@@ -987,7 +986,7 @@ ${miscText}
               </div>
             </div>
 
-            <div className="section-divider expense-divider">
+            <div className="section-divider">
               <span>💸 OPERATIONAL EXPENSES</span>
             </div>
 
@@ -1102,7 +1101,7 @@ ${miscText}
             {/* Mode 2 - Revenue & Add-on Products */}
             {renderRevenueSection()}
 
-            <div className="section-divider expense-divider">
+            <div className="section-divider">
               <span>💸 OPERATIONAL EXPENSES</span>
             </div>
 
@@ -1168,7 +1167,7 @@ ${miscText}
                   </div>
                 </div>
               </div>
-              <div className="dual-controls-grid" style={{ marginTop: '4px', paddingTop: '4px', borderTop: '1px solid var(--border-color)' }}>
+              <div className="dual-controls-grid" style={{ marginTop: 'var(--space-1)', paddingTop: 'var(--space-2)', borderTop: '1px solid var(--border)' }}>
                 <div className="dual-control-item" style={{ gridColumn: 'span 2' }}>
                   <span className="dual-control-label">Print Production Cost ({formatVal(printCost)}/copy × {printsSoldQty} pcs) = <strong>{formatVal(printsCost)}</strong></span>
                   <div className="dual-stepper-box" style={{ width: '100%', maxWidth: '240px' }}>
@@ -1215,7 +1214,7 @@ ${miscText}
             {/* Mode 3 - Revenue & Add-on Products */}
             {renderRevenueSection()}
 
-            <div className="section-divider expense-divider">
+            <div className="section-divider">
               <span>💸 OPERATIONAL EXPENSES</span>
             </div>
 
@@ -1281,7 +1280,7 @@ ${miscText}
                   </div>
                 </div>
               </div>
-              <div className="dual-controls-grid" style={{ marginTop: '4px', paddingTop: '4px', borderTop: '1px solid var(--border-color)' }}>
+              <div className="dual-controls-grid" style={{ marginTop: 'var(--space-1)', paddingTop: 'var(--space-2)', borderTop: '1px solid var(--border)' }}>
                 <div className="dual-control-item" style={{ gridColumn: 'span 2' }}>
                   <span className="dual-control-label">Print Production Cost ({formatVal(printCost)}/copy × {printsSoldQty} pcs) = <strong>{formatVal(printsCost)}</strong></span>
                   <div className="dual-stepper-box" style={{ width: '100%', maxWidth: '240px' }}>
