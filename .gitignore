@@ -12,6 +12,14 @@ dist
 dist-ssr
 *.local
 
+# Environment variables (Neon + Google OAuth credentials from
+# scripts/provision.sh — see docs/provisioning.md). *.local above already
+# covers .env.local; these are explicit for clarity. .env.example is
+# intentionally NOT matched by any of these and stays committed.
+.env
+.env.local
+.env.*.local
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

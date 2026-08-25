@@ -63,7 +63,20 @@ npm run dev
 ```
 Open [http://localhost:5173](http://localhost:5173) in your browser.
 
-### 4. Build for Production
+### 4. Cloud accounts (Neon + Google sign-in)
+The Calculator itself needs no accounts or network access. Signed-in
+features (Jobs, the Ledger) run on Neon Postgres with Google sign-in via
+Neon Auth — see `docs/adr/0001-neon-postgres-with-rls.md` and
+`docs/adr/0002-neon-auth-google-only.md`. To provision those accounts and
+populate `.env.local`, run the guided setup wizard:
+```bash
+./scripts/provision.sh
+```
+It's interactive and human-only (it opens the Neon and Google Cloud
+dashboards for you to click through) and safe to re-run. See
+`docs/provisioning.md` for what each captured value is and how to rotate it.
+
+### 5. Build for Production
 To verify TypeScript types and create a production bundle:
 ```bash
 npm run build
