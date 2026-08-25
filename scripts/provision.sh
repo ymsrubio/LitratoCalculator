@@ -23,7 +23,7 @@ fi
 TOTAL_STAGES=0
 
 _STAGE_INDEX=0
-ENV_FILE="${ENV_FILE:-.env}"
+ENV_FILE="${ENV_FILE:-.env.local}"
 WRITTEN_ENV=()    # KEYs written to ENV_FILE this run
 WRITTEN_SECRET=() # secret NAMEs set this run
 SKIPPED=()        # things we couldn't do (e.g. gh missing)
@@ -183,11 +183,11 @@ finish() {
 # STAGES: author this section. One stage() per step the human takes.
 # ──────────────────────────────────────────────────────────────────────────
 
-# Vite exposes only VITE_-prefixed vars to client bundles, and .env.local is
-# already covered by .gitignore's `*.local` pattern (and the explicit
-# `.env`/`.env.local`/`.env.*.local` block added alongside this script) — see
-# docs/provisioning.md for why each value lives where it does.
-ENV_FILE="${ENV_FILE:-.env.local}"
+# Secrets are written to ENV_FILE, which the library section above defaults to
+# .env.local. Vite exposes only VITE_-prefixed vars to client bundles, and
+# .env.local is already covered by .gitignore's `*.local` pattern (and the
+# explicit `.env`/`.env.local`/`.env.*.local` block added alongside this
+# script) — see docs/provisioning.md for why each value lives where it does.
 
 # already_configured KEY: true if KEY already has a non-empty value in
 # ENV_FILE. Used to offer skipping steps that create cloud resources, so
