@@ -49,6 +49,31 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,html,svg,png,ico,woff,woff2}'],
         skipWaiting: true,
         clientsClaim: true,
+        // index.html pulls Outfit from Google Fonts, which is cross-origin and
+        // so cannot be precached by the globs above. Without these two rules
+        // the app opens offline but falls back to system-ui, which design.md
+        // rules out. Cached on first online visit, served from cache after.
+        runtimeCaching: [
+          {
+            // The stylesheet changes when the family or weights change, so
+            // revalidate in the background rather than pinning it forever.
+            urlPattern: /^https:\/\/fonts\.googleapis\.com\//,
+            handler: 'StaleWhileRevalidate',
+            options: {
+              cacheName: 'google-fonts-stylesheets',
+            },
+          },
+          {
+            // The font files themselves are content-addressed and immutable.
+            urlPattern: /^https:\/\/fonts\.gstatic\.com\//,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'google-fonts-webfonts',
+              cacheableResponse: { statuses: [0, 200] },
+              expiration: { maxEntries: 16, maxAgeSeconds: 60 * 60 * 24 * 365 },
+            },
+          },
+        ],
       },
     }),
   ],
